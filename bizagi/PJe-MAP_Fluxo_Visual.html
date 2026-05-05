@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PJe-MAP — Fluxo de Negócio (BPMN)</title>
+<link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@300;400;600;700&family=Source+Code+Pro&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --blue:   #004b8d;
+  --blue2:  #0066cc;
+  --accent: #e8a000;
+  --green:  #1a7a3c;
+  --orange: #e65100;
+  --teal:   #006064;
+  --border: #c8d4e4;
+  --text:   #1a2b42;
+}
+body { font-family: 'Source Sans 3', sans-serif; background: #eef2f7; color: var(--text); }
+
+.header {
+  background: var(--blue); border-bottom: 3px solid var(--accent);
+  padding: 14px 28px; display: flex; align-items: center; gap: 12px;
+  color: #fff; position: sticky; top: 0; z-index: 100;
+}
+.badge { background: var(--accent); color: #111; font-size: 11px; font-weight: 900; padding: 2px 7px; border-radius: 3px; letter-spacing: 1.5px; }
+
+.content { padding: 28px 32px; }
+
+.section-title {
+  font-size: 12px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 1.2px; color: var(--blue); margin-bottom: 14px;
+  display: flex; align-items: center; gap: 10px;
+}
+.section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+.diagram-wrap {
+  background: #fff; border: 2px solid var(--blue); border-radius: 8px;
+  overflow-x: auto; overflow-y: visible; box-shadow: 0 2px 16px rgba(0,0,0,0.09);
+}
+.diagram-wrap svg { display: block; }
+
+/* ── Cards grid (RF + Estruturais) ── */
+.rules-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 14px; }
+.rule-card { border: 1.5px solid var(--border); border-radius: 6px; padding: 14px 16px; background: #fff; }
+.rule-card h4 { font-size: 11.5px; font-weight: 700; color: var(--blue); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 7px; }
+.rule-card p  { font-size: 12.5px; color: #475569; line-height: 1.65; }
+.rule-full { grid-column: 1 / -1; }
+
+/* ── Alterações Estruturais ── */
+.estru-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin-top: 14px; }
+.estru-card { border: 1.5px solid #fb923c; border-radius: 6px; padding: 14px 16px; background: #fff7ed; }
+.estru-card h4 { font-size: 11.5px; font-weight: 700; color: #9a3412; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 7px; }
+.estru-card p  { font-size: 12.5px; color: #475569; line-height: 1.65; }
+
+/* ── Scenarios ── */
+.scenarios { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin-top: 14px; }
+.sc { border: 1.5px solid var(--border); border-radius: 6px; overflow: hidden; }
+.sc-h { padding: 10px 14px; font-size: 13px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+.sc-b { padding: 10px 16px; font-size: 12.5px; color: #334155; line-height: 1.7; }
+.sc-b ol { padding-left: 18px; }
+.sc-blue   .sc-h { background: #e8f0fe; color: var(--blue); }
+.sc-amber  .sc-h { background: #fff8e1; color: #b45309; }
+.sc-purple .sc-h { background: #f3e8ff; color: #6d28d9; }
+.sc-red    .sc-h { background: #ffebee; color: #b91c1c; }
+.sc-full { grid-column: 1 / -1; }
+
+/* ── Legend ── */
+.legend {
+  display: flex; gap: 22px; flex-wrap: wrap;
+  background: #fff; border: 1px solid var(--border);
+  border-radius: 6px; padding: 12px 18px; margin-top: 16px; align-items: center;
+}
+.li { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+
+/* ── Footer ── */
+.footer { text-align: center; margin-top: 28px; padding-bottom: 32px; font-size: 11.5px; color: #94a3b8; line-height: 1.9; }
+.footer strong { color: #64748b; }
+</style>
+</head>
+<body>
+
+<header class="header">
+  <span class="badge">PJe</span>
+  <div>
+    <div style="font-size:16px;font-weight:700;">MAP — Marcação Automática de Perícias</div>
+    <div style="font-size:12px;opacity:.7;margin-top:1px;">Fluxo de Processo (BPMN 2.0) · Análise de Negócio · TRF5 / JFCE</div>
+  </div>
+  <div style="margin-left:auto;font-size:11px;opacity:.55;text-align:right;">Versão 1.0 · Março/2026<br>Protótipo de demonstração</div>
+</header>
+
+<div class="content">
+
+  <div class="section-title" style="margin-top:0;">Fluxo Principal do Processo</div>
+
+  <!--
+    CANVAS: 2260 × 770
+    Pool header : y=0–36
+    Lane A (Servidor)          : y=36–200   h=164
+    Lane B (Motor)             : y=200–560  h=360
+    Lane C (Dir. Núcleo Jud.)  : y=560–770  h=210
+    Lane label col             : x=0–110
+  -->
+  <div class="diagram-wrap">
+  <svg xmlns="http://www.w3.org/2000/svg" width="2260" height="770"
+       font-family="'Source Sans 3',sans-serif" font-size="11">
+    <defs>
+      <marker id="arr"   markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0,10 3.5,0 7" fill="#334155"/></marker>
+      <marker id="arr-g" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0,10 3.5,0 7" fill="#1a7a3c"/></marker>
+      <marker id="arr-o" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0,10 3.5,0 7" fill="#e65100"/></marker>
+      <marker id="arr-r" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0,10 3.5,0 7" fill="#b91c1c"/></marker>
+      <marker id="arr-t" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0,10 3.5,0 7" fill="#006064"/></marker>
+    </defs>
+
+    <!-- ── POOL ── -->
+    <rect x="0" y="0" width="2260" height="770" rx="8" fill="#fff" stroke="#004b8d" stroke-width="2.5"/>
+    <rect x="0" y="0" width="2260" height="36" rx="8" fill="#004b8d"/>
+    <rect x="0" y="28" width="2260" height="8" fill="#004b8d"/>
+    <text x="1130" y="23" fill="white" font-size="13" font-weight="700" text-anchor="middle">PJe-MAP — Marcação Automática de Perícias Judiciais</text>
+
+    <!-- Lane dividers -->
+    <line x1="0"   y1="200" x2="2260" y2="200" stroke="#c8d4e4" stroke-width="1.5"/>
+    <line x1="0"   y1="560" x2="2260" y2="560" stroke="#c8d4e4" stroke-width="1.5"/>
+    <line x1="110" y1="36"  x2="110"  y2="770" stroke="#c8d4e4" stroke-width="1.5"/>
+
+    <!-- Lane labels -->
+    <rect x="0" y="36"  width="110" height="164" fill="#f7f9fc"/>
+    <text transform="translate(55,200) rotate(-90)" text-anchor="middle" fill="#004b8d" font-size="11" font-weight="700" letter-spacing="0.5">Servidor da Unidade</text>
+
+    <rect x="0" y="200" width="110" height="360" fill="#f7f9fc"/>
+    <text transform="translate(55,560) rotate(-90)" text-anchor="middle" fill="#004b8d" font-size="11" font-weight="700" letter-spacing="0.5">Motor de Automação (Engine PJe-MAP)</text>
+
+    <rect x="0" y="560" width="110" height="210" fill="#f7f9fc"/>
+    <text transform="translate(55,770) rotate(-90)" text-anchor="middle" fill="#004b8d" font-size="10" font-weight="700" letter-spacing="0.5">Diretor do Núcleo Judiciário</text>
+
+    <!-- ════════════════════════════════════════
+         LANE A — SERVIDOR (y center ≈ 118)
+    ════════════════════════════════════════ -->
+
+    <!-- START EVENT cx=170 -->
+    <circle cx="170" cy="118" r="18" fill="#f0fdf4" stroke="#1a7a3c" stroke-width="3"/>
+    <text x="170" y="123" text-anchor="middle" fill="#1a7a3c" font-size="13">▶</text>
+    <text x="170" y="150" text-anchor="middle" fill="#334155" font-size="10">Processo</text>
+    <text x="170" y="161" text-anchor="middle" fill="#334155" font-size="10">recebido</text>
+
+    <line x1="188" y1="118" x2="218" y2="118" stroke="#334155" stroke-width="2" marker-end="url(#arr)"/>
+
+    <!-- TASK: Remeter Processo x=220 -->
+    <rect x="220" y="92" width="140" height="52" rx="5" fill="#e8f0fe" stroke="#0066cc" stroke-width="1.5"/>
+    <text x="234" y="106" fill="#004b8d" font-size="10" font-weight="700">👤</text>
+    <text x="290" y="109" text-anchor="middle" fill="#004b8d" font-size="11" font-weight="600">Remeter processo</text>
+    <text x="290" y="122" text-anchor="middle" fill="#004b8d" font-size="10">para automação</text>
+    <text x="290" y="134" text-anchor="middle" fill="#004b8d" font-size="10">de perícia</text>
+
+    <!-- ↓ dispara motor (cross-lane dashed) -->
+    <line x1="290" y1="144" x2="290" y2="254" stroke="#334155" stroke-width="2" stroke-dasharray="5,3" marker-end="url(#arr)"/>
+    <text x="296" y="204" fill="#8898aa" font-size="9.5">dispara motor</text>
+
+    <!-- TASK: Designar Manualmente x=1870 -->
+    <rect x="1870" y="92" width="140" height="52" rx="5" fill="#fff3e0" stroke="#e65100" stroke-width="1.5"/>
+    <text x="1884" y="106" fill="#e65100" font-size="10" font-weight="700">👤</text>
+    <text x="1940" y="108" text-anchor="middle" fill="#e65100" font-size="11" font-weight="600">Designar perito</text>
+    <text x="1940" y="120" text-anchor="middle" fill="#e65100" font-size="10">e horário</text>
+    <text x="1940" y="132" text-anchor="middle" fill="#e65100" font-size="10">manualmente</text>
+
+    <!-- Return arrow: Designar → Start (bottom arc within Lane A) -->
+    <path d="M1940,144 L1940,182 L170,182 L170,136" fill="none" stroke="#e65100" stroke-width="1.8" stroke-dasharray="6,3" marker-end="url(#arr-o)"/>
+    <text x="1060" y="176" text-anchor="middle" fill="#e65100" font-size="10" font-weight="600">← Retornar ao início do fluxo</text>
+
+    <!-- → End Manual -->
+    <line x1="2010" y1="118" x2="2060" y2="118" stroke="#e65100" stroke-width="2" marker-end="url(#arr-o)"/>
+
+    <!-- END EVENT Manual cx=2080 -->
+    <circle cx="2080" cy="118" r="18" fill="#fff3e0" stroke="#e65100" stroke-width="4"/>
+    <text x="2080" y="123" text-anchor="middle" fill="#e65100" font-size="12">✕</text>
+    <text x="2080" y="150" text-anchor="middle" fill="#e65100" font-size="10">Designação</text>
+    <text x="2080" y="161" text-anchor="middle" fill="#e65100" font-size="10">manual</text>
+
+    <!-- END EVENT Auto cx=2210 -->
+    <circle cx="2210" cy="118" r="18" fill="#f0fdf4" stroke="#1a7a3c" stroke-width="4"/>
+    <circle cx="2210" cy="118" r="9" fill="#1a7a3c"/>
+    <text x="2210" y="150" text-anchor="middle" fill="#1a7a3c" font-size="10">Agendamento</text>
+    <text x="2210" y="161" text-anchor="middle" fill="#1a7a3c" font-size="10">confirmado</text>
+
+    <!-- ════════════════════════════════════════
+         LANE B — MOTOR  (y 200–560)
+         Pipeline principal: y=278 (center)
+         Split paths:  Consultório y≈240, Sede y≈360
+         Fallback / loop: y≈460–530
+    ════════════════════════════════════════ -->
+
+    <!-- TASK: Identificar Especialidade x=230 -->
+    <rect x="230" y="254" width="130" height="52" rx="5" fill="#f5f7fa" stroke="#546e7a" stroke-width="1.5"/>
+    <text x="244" y="267" fill="#546e7a" font-size="10">⚙</text>
+    <text x="295" y="270" text-anchor="middle" fill="#263238" font-size="11" font-weight="600">Identificar</text>
+    <text x="295" y="282" text-anchor="middle" fill="#263238" font-size="10">especialidade e</text>
+    <text x="295" y="294" text-anchor="middle" fill="#263238" font-size="10">modo da unidade</text>
+
+    <line x1="360" y1="280" x2="392" y2="280" stroke="#334155" stroke-width="2" marker-end="url(#arr)"/>
+
+    <!-- GW: Modo Automático center=(415,280) -->
+    <polygon points="415,260 435,280 415,300 395,280" fill="#fffbf0" stroke="#c0392b" stroke-width="2"/>
+    <text x="415" y="284" text-anchor="middle" fill="#c0392b" font-size="13" font-weight="700">✕</text>
+    <text x="415" y="315" text-anchor="middle" fill="#5a6a80" font-size="10">Modo =</text>
+    <text x="415" y="325" text-anchor="middle" fill="#5a6a80" font-size="10">Automático?</text>
+
+    <!-- Sim → Buscar Peritos -->
+    <line x1="435" y1="280" x2="470" y2="280" stroke="#1a7a3c" stroke-width="2" marker-end="url(#arr-g)"/>
+    <text x="450" y="274" text-anchor="middle" fill="#1a7a3c" font-size="10" font-weight="700">Sim</text>
+
+    <!-- TASK: Buscar Peritos x=472 -->
+    <rect x="472" y="254" width="130" height="52" rx="5" fill="#f5f7fa" stroke="#546e7a" stroke-width="1.5"/>
+    <text x="486" y="267" fill="#546e7a" font-size="10">⚙</text>
+    <text x="537" y="270" text-anchor="middle" fill="#263238" font-size="11" font-weight="600">RF01 — Filtrar</text>
+    <text x="537" y="282" text-anchor="middle" fill="#263238" font-size="10">peritos pela</text>
+    <text x="537" y="294" text-anchor="middle" fill="#263238" font-size="10">especialidade</text>
+
+    <line x1="602" y1="280" x2="636" y2="280" stroke="#334155" stroke-width="2" marker-end="url(#arr)"/>
+
+    <!-- GW: Peritos Encontrados center=(659,280) -->
+    <polygon points="659,260 679,280 659,300 639,280" fill="#fffbf0" stroke="#c0392b" stroke-width="2"/>
+    <text x="659" y="284" text-anchor="middle" fill="#c0392b" font-size="13" font-weight="700">✕</text>
+    <text x="659" y="315" text-anchor="middle" fill="#5a6a80" font-size="10">Peritos</text>
+    <text x="659" y="325" text-anchor="middle" fill="#5a6a80" font-size="10">encontrados?</text>
+
+    <!-- Sim → Ordenar Carga -->
+    <line x1="679" y1="280" x2="714" y2="280" stroke="#1a7a3c" stroke-width="2" marker-end="url(#arr-g)"/>
+    <text x="695" y="274" text-anchor="middle" fill="#1a7a3c" font-size="10" font-weight="700">Sim</text>
+
+    <!-- TASK: Ordenar Carga x=716 -->
+    <rect x="716" y="254" width="130" height="52" rx="5" fill="#f5f7fa" stroke="#546e7a" stroke-width="1.5"/>
+    <text x="730" y="267" fill="#546e7a" font-size="10">⚙</text>
+    <text x="781" y="268" text-anchor="middle" fill="#263238" font-size="11" font-weight="600">RF01 — Ordenar</text>
+    <text x="781" y="280" text-anchor="middle" fill="#263238" font-size="10">por menor carga</text>
+    <text x="781" y="292" text-anchor="middle" fill="#263238" font-size="10">mensal</text>
+
+    <line x1="846" y1="280" x2="880" y2="280" stroke="#334155" stroke-width="2" marker-end="url(#arr)"/>
+
+    <!-- TASK: Verificar Agenda x=882 (purple) -->
+    <rect x="882" y="254" width="130" height="52" rx="5" fill="#f5f3ff" stroke="#7c3aed" stroke-width="1.5"/>
+    <text x="896" y="267" fill="#7c3aed" font-size="10">⚙</text>
+    <text x="947" y="268" text-anchor="middle" fill="#4c1d95" font-size="11" font-weight="600">RF02 — Verificar</text>
+    <text x="947" y="280" text-anchor="middle" fill="#4c1d95" font-size="10">próxima data na</text>
+    <text x="947" y="292" text-anchor="middle" fill="#4c1d95" font-size="10">agenda base</text>
+
+    <line x1="1012" y1="280" x2="1046" y2="280" stroke="#334155" stroke-width="2" marker-end="url(#arr)"/>
+
+    <!-- GW: Local Atendimento center=(1069,280) -->
+    <polygon points="1069,260 1089,280 1069,300 1049,280" fill="#fffbf0" stroke="#c0392b" stroke-width="2"/>
+    <text x="1069" y="284" text-anchor="middle" fill="#c0392b" font-size="13" font-weight="700">✕</text>
+    <text x="1069" y="315" text-anchor="middle" fill="#5a6a80" font-size="10">Local de</text>
+    <text x="1069" y="325" text-anchor="middle" fill="#5a6a80" font-size="10">atendimento?</text>
+
+    <!-- ── PATH A: Consultório  (upper arc to y=240) ── -->
+    <path d="M1069,260 L1069,242 L1132,242" fill="none" stroke="#00695c" stroke-width="2" marker-end="url(#arr)"/>
+    <text x="1094" y="236" fill="#00695c" font-size="10" font-weight="700">Consultório</text>
+
+    <!-- TASK: Verificar Consultório x=1132 y=216 -->
+    <rect x="1132" y="216" width="140" height="52" rx="5" fill="#e0f2f1" stroke="#00897b" stroke-width="1.5"/>
+    <text x="1146" y="229" fill="#00695c" font-size="10">⚙</text>
+    <text x="1202" y="232" text-anchor="middle" fill="#004d40" font-size="11" font-weight="600">Verificar agenda</text>
+    <text x="1202" y="245" text-anchor="middle" fill="#004d40" font-size="10">do consultório</text>
+    <text x="1202" y="257" text-anchor="middle" fill="#004d40" font-size="10">particular</text>
+
+    <!-- → to GW Merge -->
+    <path d="M1272,242 L1400,242 L1400,280" fill="none" stroke="#1a7a3c" stroke-width="2" marker-end="url(#arr-g)"/>
+    <text x="1322" y="235" fill="#1a7a3c" font-size="10" font-weight="700">✓ Vaga</text>
+
+    <!-- ── PATH B: Sede  (lower arc to y=362) ── -->
+    <path d="M1069,300 L1069,362 L1132,362" fill="none" stroke="#880e4f" stroke-width="2" marker-end="url(#arr)"/>
+    <text x="1077" y="342" fill="#880e4f" font-size="10" font-weight="700">Sede</text>
+
+    <!-- TASK: Trava de Sala x=1132 y=336 -->
+    <rect x="1132" y="336" width="140" height="52" rx="5" fill="#f5f3ff" stroke="#7c3aed" stroke-width="1.5"/>
+    <text x="1146" y="349" fill="#7c3aed" font-size="10">⚙</text>
+    <text x="1202" y="352" text-anchor="middle" fill="#4c1d95" font-size="11" font-weight="600">RF01 — Verificar</text>
+    <text x="1202" y="364" text-anchor="middle" fill="#4c1d95" font-size="10">Trava de Sala</text>
+    <text x="1202" y="376" text-anchor="middle" fill="#4c1d95" font-size="10">no turno</text>
+
+    <line x1="1272" y1="362" x2="1308" y2="362" stroke="#334155" stroke-width="2" marker-end="url(#arr)"/>
+
+    <!-- TASK: Buscar Sala x=1310 y=336 -->
+    <rect x="1310" y="336" width="140" height="52" rx="5" fill="#f5f7fa" stroke="#546e7a" stroke-width="1.5"/>
+    <text x="1324" y="349" fill="#546e7a" font-size="10">⚙</text>
+    <text x="1380" y="350" text-anchor="middle" fill="#263238" font-size="11" font-weight="600">Buscar sala livre</text>
+    <text x="1380" y="362" text-anchor="middle" fill="#263238" font-size="10">na localidade</text>
+    <text x="1380" y="374" text-anchor="middle" fill="#263238" font-size="10">(por turno)</text>
+
+    <line x1="1450" y1="362" x2="1484" y2="362" stroke="#334155" stroke-width="2" marker-end="url(#arr)"/>
+
+    <!-- GW: Sala Disponível center=(1507,362) -->
+    <polygon points="1507,342 1527,362 1507,382 1487,362" fill="#fffbf0" stroke="#c0392b" stroke-width="2"/>
+    <text x="1507" y="366" text-anchor="middle" fill="#c0392b" font-size="13" font-weight="700">✕</text>
+    <text x="1507" y="397" text-anchor="middle" fill="#5a6a80" font-size="10">Sala</text>
+    <text x="1507" y="407" text-anchor="middle" fill="#5a6a80" font-size="10">disponível?</text>
+
+    <!-- Sim → GW Merge -->
+    <path d="M1527,362 L1600,362 L1600,280 L1614,280" fill="none" stroke="#1a7a3c" stroke-width="2" marker-end="url(#arr-g)"/>
+    <text x="1548" y="355" fill="#1a7a3c" font-size="10" font-weight="700">Sim</text>
+
+    <!-- GW MERGE (converging) center=(1637,280) -->
+    <polygon points="1637,260 1657,280 1637,300 1617,280" fill="#f0fdf4" stroke="#1a7a3c" stroke-width="2"/>
+    <text x="1637" y="284" text-anchor="middle" fill="#1a7a3c" font-size="14" font-weight="700">+</text>
+    <text x="1637" y="315" text-anchor="middle" fill="#1a7a3c" font-size="10" font-weight="600">Vaga</text>
+    <text x="1637" y="325" text-anchor="middle" fill="#1a7a3c" font-size="10" font-weight="600">confirmada</text>
+
+    <line x1="1657" y1="280" x2="1692" y2="280" stroke="#1a7a3c" stroke-width="2" marker-end="url(#arr-g)"/>
+
+    <!-- TASK: Confirmar Agendamento x=1694 -->
+    <rect x="1694" y="254" width="130" height="52" rx="5" fill="#e8f5e9" stroke="#1a7a3c" stroke-width="1.5"/>
+    <text x="1708" y="267" fill="#1a7a3c" font-size="10">⚙</text>
+    <text x="1759" y="269" text-anchor="middle" fill="#1a7a3c" font-size="11" font-weight="600">Confirmar</text>
+    <text x="1759" y="281" text-anchor="middle" fill="#1a7a3c" font-size="10">agendamento e</text>
+    <text x="1759" y="293" text-anchor="middle" fill="#1a7a3c" font-size="10">reservar sala</text>
+
+    <line x1="1824" y1="280" x2="1842" y2="280" stroke="#1a7a3c" stroke-width="2" marker-end="url(#arr-g)"/>
+
+    <!-- TASK: Inserir Etiqueta x=1844 (teal) -->
+    <rect x="1844" y="254" width="138" height="52" rx="5" fill="#e0f7fa" stroke="#006064" stroke-width="1.5"/>
+    <text x="1858" y="267" fill="#006064" font-size="10">⚙</text>
+    <text x="1913" y="268" text-anchor="middle" fill="#004d40" font-size="11" font-weight="600">Inserir etiqueta:</text>
+    <text x="1913" y="280" text-anchor="middle" fill="#004d40" font-size="10">(A) Perícia -</text>
+    <text x="1913" y="292" text-anchor="middle" fill="#004d40" font-size="10">&lt;perito&gt; - &lt;data&gt;</text>
+
+    <line x1="1982" y1="280" x2="2000" y2="280" stroke="#1a7a3c" stroke-width="2" marker-end="url(#arr-g)"/>
+
+    <!-- TASK: Incluir Ato de Comunicação x=2002 -->
+    <rect x="2002" y="254" width="138" height="52" rx="5" fill="#e8f5e9" stroke="#1a7a3c" stroke-width="1.5"/>
+    <text x="2016" y="267" fill="#1a7a3c" font-size="10">⚙</text>
+    <text x="2071" y="268" text-anchor="middle" fill="#1a7a3c" font-size="11" font-weight="600">Incluir Ato de</text>
+    <text x="2071" y="280" text-anchor="middle" fill="#1a7a3c" font-size="10">Comunicação</text>
+    <text x="2071" y="292" text-anchor="middle" fill="#1a7a3c" font-size="10">"Intimação"</text>
+
+    <!-- ↑ cross-lane to End Auto -->
+    <path d="M2140,254 L2210,254 L2210,136" fill="none" stroke="#1a7a3c" stroke-width="2" marker-end="url(#arr-g)"/>
+
+    <!-- ════════════════════════════════════════
+         FALLBACK PATHS
+    ════════════════════════════════════════ -->
+
+    <!-- GW_Modo Não → Fallback (via y=520) -->
+    <path d="M415,300 L415,520 L1734,520 L1734,498" fill="none" stroke="#b91c1c" stroke-width="2" stroke-dasharray="6,3" marker-end="url(#arr-r)"/>
+    <text x="440" y="512" fill="#b91c1c" font-size="10" font-weight="700">Não (manual)</text>
+
+    <!-- GW_Peritos Não → Fallback (via y=532) -->
+    <path d="M659,300 L659,532 L1784,532 L1784,498" fill="none" stroke="#b91c1c" stroke-width="2" stroke-dasharray="6,3" marker-end="url(#arr-r)"/>
+    <text x="674" y="524" fill="#b91c1c" font-size="10" font-weight="700">Não</text>
+
+    <!-- GW_Sala Não → GW_Loop -->
+    <path d="M1507,382 L1507,472 L1562,472" fill="none" stroke="#b91c1c" stroke-width="2" stroke-dasharray="6,3" marker-end="url(#arr-r)"/>
+    <text x="1514" y="436" fill="#b91c1c" font-size="10" font-weight="700">Não</text>
+
+    <!-- GW_Loop center=(1585,472) -->
+    <polygon points="1585,452 1605,472 1585,492 1565,472" fill="#fffbf0" stroke="#c0392b" stroke-width="2"/>
+    <text x="1585" y="476" text-anchor="middle" fill="#c0392b" font-size="12" font-weight="700">✕</text>
+    <text x="1585" y="508" text-anchor="middle" fill="#5a6a80" font-size="10">Mais datas /</text>
+    <text x="1585" y="518" text-anchor="middle" fill="#5a6a80" font-size="10">peritos? (42d)</text>
+
+    <!-- Loop back Sim → Verificar Agenda (bottom arc) -->
+    <path d="M1565,472 L947,472 L947,306" fill="none" stroke="#7c3aed" stroke-width="2" stroke-dasharray="5,3" marker-end="url(#arr)"/>
+    <text x="1240" y="492" text-anchor="middle" fill="#7c3aed" font-size="10" font-weight="700">Sim — próxima data / próximo perito</text>
+
+    <!-- GW_Loop Não (esgotado) → Fallback -->
+    <line x1="1605" y1="472" x2="1712" y2="472" stroke="#b91c1c" stroke-width="2" stroke-dasharray="6,3" marker-end="url(#arr-r)"/>
+    <text x="1650" y="465" fill="#b91c1c" font-size="10" font-weight="700">Esgotado</text>
+
+    <!-- TASK: Fallback x=1714 y=446 -->
+    <rect x="1714" y="446" width="148" height="52" rx="5" fill="#fff3e0" stroke="#e65100" stroke-width="1.5"/>
+    <text x="1728" y="460" fill="#e65100" font-size="10">⚙</text>
+    <text x="1788" y="461" text-anchor="middle" fill="#e65100" font-size="11" font-weight="600">RF03 — Encaminhar</text>
+    <text x="1788" y="473" text-anchor="middle" fill="#e65100" font-size="10">para designação</text>
+    <text x="1788" y="485" text-anchor="middle" fill="#e65100" font-size="10">manual</text>
+
+    <!-- Fallback ↑ to Designar Manualmente (cross-lane) -->
+    <path d="M1788,446 L1788,194 L1940,194 L1940,144" fill="none" stroke="#e65100" stroke-width="2" marker-end="url(#arr-o)"/>
+
+    <!-- ════════════════════════════════════════
+         LANE C — DIRETOR DO NÚCLEO JUDICIÁRIO (y 560–770)
+    ════════════════════════════════════════ -->
+
+    <!-- TASK: Manter Disponibilidade x=450 -->
+    <rect x="450" y="592" width="148" height="56" rx="5" fill="#e8f0fe" stroke="#0066cc" stroke-width="1.5"/>
+    <text x="464" y="606" fill="#0066cc" font-size="10">👤</text>
+    <text x="524" y="611" text-anchor="middle" fill="#004b8d" font-size="11" font-weight="600">RF02 — Cadastrar</text>
+    <text x="524" y="623" text-anchor="middle" fill="#004b8d" font-size="10">disponibilidade</text>
+    <text x="524" y="635" text-anchor="middle" fill="#004b8d" font-size="10">dos peritos</text>
+
+    <!-- TASK: Cadastrar Bloqueios x=660 -->
+    <rect x="660" y="592" width="148" height="56" rx="5" fill="#e8f0fe" stroke="#0066cc" stroke-width="1.5"/>
+    <text x="674" y="606" fill="#0066cc" font-size="10">👤</text>
+    <text x="734" y="611" text-anchor="middle" fill="#004b8d" font-size="11" font-weight="600">Cadastrar bloqueios</text>
+    <text x="734" y="623" text-anchor="middle" fill="#004b8d" font-size="10">de localidade</text>
+    <text x="734" y="635" text-anchor="middle" fill="#004b8d" font-size="10">(feriados)</text>
+
+    <!-- TASK: Configurar Modo x=876 -->
+    <rect x="876" y="592" width="148" height="56" rx="5" fill="#e8f0fe" stroke="#0066cc" stroke-width="1.5"/>
+    <text x="890" y="606" fill="#0066cc" font-size="10">👤</text>
+    <text x="950" y="611" text-anchor="middle" fill="#004b8d" font-size="11" font-weight="600">RF03 — Configurar</text>
+    <text x="950" y="623" text-anchor="middle" fill="#004b8d" font-size="10">modo da unidade</text>
+    <text x="950" y="635" text-anchor="middle" fill="#004b8d" font-size="10">(Auto / Manual)</text>
+
+    <!-- Reference dashed lines: admin → motor -->
+    <line x1="524" y1="592" x2="524" y2="560" stroke="#0066cc" stroke-width="1" stroke-dasharray="4,3"/>
+    <line x1="734" y1="592" x2="734" y2="560" stroke="#0066cc" stroke-width="1" stroke-dasharray="4,3"/>
+    <line x1="950" y1="592" x2="950" y2="560" stroke="#0066cc" stroke-width="1" stroke-dasharray="4,3"/>
+
+  </svg>
+  </div><!-- /diagram-wrap -->
+
+  <!-- ── Legenda ── -->
+  <div class="legend">
+    <strong style="font-size:12px;color:var(--blue);">Legenda:</strong>
+    <div class="li"><svg width="24" height="24"><circle cx="12" cy="12" r="9" fill="#f0fdf4" stroke="#1a7a3c" stroke-width="3"/><text x="12" y="17" text-anchor="middle" font-size="11" fill="#1a7a3c">▶</text></svg>Evento de início</div>
+    <div class="li"><svg width="24" height="24"><circle cx="12" cy="12" r="9" fill="#f0fdf4" stroke="#1a7a3c" stroke-width="4"/><circle cx="12" cy="12" r="5" fill="#1a7a3c"/></svg>Evento de fim (sucesso)</div>
+    <div class="li"><svg width="24" height="24"><circle cx="12" cy="12" r="9" fill="#fff3e0" stroke="#e65100" stroke-width="4"/><text x="12" y="17" text-anchor="middle" font-size="12" fill="#e65100">✕</text></svg>Evento de fim (manual)</div>
+    <div class="li"><svg width="42" height="24"><rect x="1" y="3" width="40" height="18" rx="3" fill="#e8f0fe" stroke="#0066cc" stroke-width="1.5"/><text x="21" y="16" text-anchor="middle" font-size="9" fill="#004b8d">👤 Usuário</text></svg>Tarefa de usuário</div>
+    <div class="li"><svg width="42" height="24"><rect x="1" y="3" width="40" height="18" rx="3" fill="#f5f7fa" stroke="#546e7a" stroke-width="1.5"/><text x="21" y="16" text-anchor="middle" font-size="9" fill="#263238">⚙ Serviço</text></svg>Tarefa de serviço</div>
+    <div class="li"><svg width="42" height="24"><rect x="1" y="3" width="40" height="18" rx="3" fill="#e0f7fa" stroke="#006064" stroke-width="1.5"/><text x="21" y="16" text-anchor="middle" font-size="9" fill="#004d40">⚙ Etiqueta</text></svg>Tarefa de sistema (etiqueta)</div>
+    <div class="li"><svg width="24" height="24"><polygon points="12,2 22,12 12,22 2,12" fill="#fffbf0" stroke="#c0392b" stroke-width="2"/><text x="12" y="16" text-anchor="middle" font-size="11" fill="#c0392b">✕</text></svg>Gateway exclusivo</div>
+    <div class="li"><svg width="24" height="24"><polygon points="12,2 22,12 12,22 2,12" fill="#f0fdf4" stroke="#1a7a3c" stroke-width="2"/><text x="12" y="16" text-anchor="middle" font-size="11" fill="#1a7a3c">+</text></svg>Gateway convergência</div>
+    <div class="li"><svg width="40" height="10"><line x1="0" y1="5" x2="36" y2="5" stroke="#b91c1c" stroke-width="2" stroke-dasharray="5,3"/></svg>Fallback / exceção</div>
+    <div class="li"><svg width="40" height="10"><line x1="0" y1="5" x2="36" y2="5" stroke="#e65100" stroke-width="2" stroke-dasharray="6,3"/></svg>Retorno ao início</div>
+  </div>
+
+  <!-- ── Regras de Negócio ── -->
+  <div class="section-title" style="margin-top:28px;">Regras de Negócio (RF)</div>
+  <div class="rules-grid">
+    <div class="rule-card">
+      <h4>RF01 — Motor de Busca (Pipeline)</h4>
+      <p>
+        1. Filtra peritos pela especialidade e unidade.<br>
+        2. Verifica local: <strong>Consultório</strong> (só agenda) ou <strong>Sede</strong> (agenda + sala).<br>
+        3. Desempate: perito com <strong>menor carga mensal</strong> é verificado primeiro.
+      </p>
+    </div>
+    <div class="rule-card">
+      <h4>RF02 — Gestão de Disponibilidade</h4>
+      <p>
+        <strong>Padrão:</strong> recorrência semanal (dia, horário, intervalo, vagas/turno).<br>
+        <strong>Exceção:</strong> datas específicas de disponibilidade.<br>
+        <strong>Capacidade:</strong> número máximo de perícias por turno respeitado.
+      </p>
+    </div>
+    <div class="rule-card">
+      <h4>RF03 — Flexibilidade Organizacional</h4>
+      <p>
+        <strong>Modo:</strong> Automático ou Manual por unidade jurisdicional.<br>
+        <strong>Fallback:</strong> sem vaga em 42 dias → tarefa "Designar Manualmente".<br>
+        <strong>Retorno:</strong> após designação manual, o fluxo retorna ao início.
+      </p>
+    </div>
+    <div class="rule-card" style="border-color:#7c3aed;background:#f9f5ff;">
+      <h4 style="color:#6d28d9;">Trava de Sala (Sede)</h4>
+      <p>
+        Se o perito já possui sala reservada no <strong>mesmo dia e turno</strong>,
+        o motor utiliza a <strong>mesma sala</strong> (evita conflito de localidade).<br>
+        Se não há trava: busca a primeira sala livre.
+      </p>
+    </div>
+    <div class="rule-card" style="border-color:var(--accent);background:#fffbf0;">
+      <h4 style="color:#92400e;">Loop de Busca (42 dias)</h4>
+      <p>
+        Para cada perito (menor carga primeiro), testa todas as datas disponíveis
+        na janela de 42 dias. Sala ocupada → avança para a próxima data.
+        Todos esgotados → fallback manual.
+      </p>
+    </div>
+    <div class="rule-card" style="border-color:#006064;background:#e0f7fa;">
+      <h4 style="color:#006064;">Inserção Automática de Etiqueta</h4>
+      <p>
+        Após confirmar o agendamento, o sistema insere automaticamente a etiqueta
+        <strong>"(A) Perícia - [Perito] - [Data]"</strong> no processo.
+        Facilita a identificação visual e triagem na lista de tarefas do PJe.
+      </p>
+    </div>
+    <div class="rule-card rule-full" style="border-color:var(--green);background:#f0fdf4;">
+      <h4 style="color:var(--green);">Ato de Comunicação Automático</h4>
+      <p>
+        Ao confirmar o agendamento, o sistema inclui automaticamente no processo o
+        <strong>Ato de Comunicação "Intimação"</strong> com perito designado, data, hora e local.
+        O ato é incluído pelo próprio sistema como parte da automação do fluxo.
+      </p>
+    </div>
+  </div>
+
+  <!-- ── Alterações Estruturais ── -->
+  <div class="section-title" style="margin-top:28px;">Alterações Estruturais necessárias no PJe</div>
+  <div class="estru-grid">
+    <div class="estru-card">
+      <h4>1. Cadastro do Órgão Julgador</h4>
+      <p>
+        Incluir campo de escolha do <strong>modo de marcação de perícias</strong>:
+        <strong>Manual</strong> ou <strong>Automático</strong>.<br>
+        Quando em modo Automático, o fluxo PJe-MAP é ativado ao receber o processo.
+        Quando Manual, o processo é encaminhado diretamente para designação humana.
+      </p>
+    </div>
+    <div class="estru-card">
+      <h4>2. Cadastro do Perito</h4>
+      <p>
+        Incluir campo de escolha do <strong>local de realização das perícias</strong>:
+        <strong>Ambiente da Justiça</strong> (sala na sede) ou <strong>Local Próprio</strong> (consultório particular).<br>
+        Ao selecionar <em>Local Próprio</em>, exibir campo obrigatório para
+        <strong>endereço completo do consultório</strong>.
+      </p>
+    </div>
+    <div class="estru-card">
+      <h4>3. Cadastro de Sala de Perícia</h4>
+      <p>
+        Criar entidade <strong>Sala de Perícia</strong> associada a uma
+        <strong>Localidade</strong> (subseção judiciária), com campos de:
+        dias da semana e horários disponíveis,
+        capacidade por turno e
+        <strong>endereço completo</strong> da sala.
+      </p>
+    </div>
+    <div class="estru-card">
+      <h4>4. Disponibilidade do Perito</h4>
+      <p>
+        Criar campo de <strong>datas específicas de disponibilidade</strong>
+        (além da recorrência semanal já existente), permitindo ao
+        Diretor do Núcleo Judiciário cadastrar exceções pontuais —
+        tanto de disponibilidade extra quanto de indisponibilidade — para cada perito.
+      </p>
+    </div>
+    <div class="estru-card" style="grid-column:1/-1;">
+      <h4>5. Cadastro do Ato de Comunicação "Intimação"</h4>
+      <p>
+        Criar modelo de Ato de Comunicação do tipo <strong>Intimação</strong>
+        com os seguintes <strong>campos dinâmicos</strong> preenchidos automaticamente
+        pelo sistema no momento do agendamento:
+        <strong>Perito Designado</strong>,
+        <strong>Data da Perícia</strong>,
+        <strong>Hora da Perícia</strong> e
+        <strong>Local de Realização</strong>
+        (endereço do consultório ou sala da sede, conforme o cadastro do perito).
+      </p>
+    </div>
+  </div>
+
+  <!-- ── Cenários ── -->
+  <div class="section-title" style="margin-top:28px;">Cenários de Demonstração</div>
+  <div class="scenarios">
+    <div class="sc sc-blue">
+      <div class="sc-h">🩻 Cenário 1 — Ortopedia (Desempate por Carga)</div>
+      <div class="sc-b"><ol>
+        <li>2 peritos: Dr. João (Sede, 3/mês) e Dra. Maria (Consultório, 1/mês)</li>
+        <li>Desempate: Dra. Maria tem <strong>menor carga</strong> → verificada primeiro</li>
+        <li>Local = Consultório → sem verificação de sala</li>
+        <li>Sistema insere etiqueta "(A) Perícia - Dra. Maria - 30/03"</li>
+        <li><strong>Agendado:</strong> Dra. Maria — Seg. 30/03 às 09:00 · Consultório</li>
+      </ol></div>
+    </div>
+    <div class="sc sc-blue">
+      <div class="sc-h">🧠 Cenário 2 — Psiquiatria (Desempate por Carga)</div>
+      <div class="sc-b"><ol>
+        <li>2 peritos: Dr. Carlos (Sede, 5/mês) e Dra. Ana (Consultório, 2/mês)</li>
+        <li>Desempate: Dra. Ana tem <strong>menor carga</strong> → verificada primeiro</li>
+        <li>Local = Consultório → sem verificação de sala</li>
+        <li>Sistema insere etiqueta "(A) Perícia - Dra. Ana - 01/04"</li>
+        <li><strong>Agendado:</strong> Dra. Ana — Qua. 01/04 às 14:00 · Consultório</li>
+      </ol></div>
+    </div>
+    <div class="sc sc-amber">
+      <div class="sc-h">🔬 Cenário 3 — Neurologia (Conflito de Sala)</div>
+      <div class="sc-b"><ol>
+        <li>Dr. Pedro Lima (Sede) — único perito disponível</li>
+        <li>Motor verifica salas em JFCE Fortaleza na Sexta 03/04</li>
+        <li><strong>Sala 01 ocupada</strong> por caso pré-existente (manhã)</li>
+        <li>Motor tenta Sala 02 → disponível ✓</li>
+        <li>Sistema insere etiqueta "(A) Perícia - Dr. Pedro - 03/04"</li>
+        <li><strong>Agendado:</strong> Dr. Pedro — Sex. 03/04 às 08:00 · Sala 02</li>
+      </ol></div>
+    </div>
+    <div class="sc sc-purple">
+      <div class="sc-h">🔒 Cenário 4 — Neurologia 2 (Trava de Sala)</div>
+      <div class="sc-b"><ol>
+        <li>Dr. Pedro Lima já tem Sala 02 reservada na Sex. 10/04 (manhã)</li>
+        <li>Motor detecta a <strong>Trava de Sala</strong> ativa para o mesmo turno</li>
+        <li>Sistema confirma <strong>mesma Sala 02</strong> sem nova busca</li>
+        <li>Garante que Dr. Pedro não ocupe salas distintas no mesmo turno</li>
+      </ol></div>
+    </div>
+    <div class="sc sc-red sc-full">
+      <div class="sc-h">❌ Cenário 5 — Cardiologia (Fallback para Designação Manual)</div>
+      <div class="sc-b"><ol style="columns:2;gap:28px;">
+        <li>Motor busca peritos com especialidade "Cardiologia" em Vara JFCE-01</li>
+        <li><strong>Nenhum perito cadastrado</strong> → gateway "Peritos encontrados?" = Não</li>
+        <li>Motor registra motivo no log do processo</li>
+        <li>Processo encaminhado para <strong>"Perícia — Designar Manualmente"</strong></li>
+        <li>Servidor designa perito e horário manualmente no PJe</li>
+        <li>Após designação manual, fluxo <strong>retorna ao início</strong> para novo ciclo</li>
+      </ol></div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <strong>PJe-MAP · Protótipo de Demonstração · TRF5 / Justiça Federal no Ceará · Março/2026</strong><br>
+    Feito com carinho pelo <strong>Laboratório de Fluxos</strong>
+  </div>
+
+</div><!-- /content -->
+</body>
+</html>

@@ -1,0 +1,734 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions
+  xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+  xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+  id="Definitions_PJeMAP"
+  targetNamespace="http://pje.trf5.jus.br/map"
+  exporter="PJe-MAP Demo — TRF5/JFCE"
+  exporterVersion="1.0">
+
+  <!-- ═══════════════════════════════════════════════════════════════
+       COLLABORATION
+  ═══════════════════════════════════════════════════════════════ -->
+  <bpmn:collaboration id="Collab_PJeMAP">
+    <bpmn:participant id="Pool_PJeMAP"
+      name="PJe-MAP — Marcação Automática de Perícias"
+      processRef="Proc_PJeMAP"/>
+  </bpmn:collaboration>
+
+  <!-- ═══════════════════════════════════════════════════════════════
+       PROCESS
+  ═══════════════════════════════════════════════════════════════ -->
+  <bpmn:process id="Proc_PJeMAP" isExecutable="false" name="Agendamento Automático de Perícia Judicial">
+
+    <bpmn:laneSet id="LaneSet_1">
+
+      <!-- Lane 1: Servidor da Unidade -->
+      <bpmn:lane id="Lane_Servidor" name="Servidor da Unidade">
+        <bpmn:flowNodeRef>Start_ProcessoRecebido</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_RemeterProcesso</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_DesignarManualmente</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>End_DesignacaoManual</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>End_AgendamentoConfirmado</bpmn:flowNodeRef>
+      </bpmn:lane>
+
+      <!-- Lane 2: Motor de Automação -->
+      <bpmn:lane id="Lane_Motor" name="Motor de Automação (Engine PJe-MAP)">
+        <bpmn:flowNodeRef>Task_IdentificarEspecialidade</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>GW_ModoAutomatico</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_BuscarPeritos</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>GW_PeritosEncontrados</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_OrdenarCarga</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_VerificarAgenda</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>GW_LocalAtendimento</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_VerificarConsultorio</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_VerificarTravaSala</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_BuscarSalaDisponivel</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>GW_SalaDisponivel</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>GW_ProximaDataPerito</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>GW_MergeVaga</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_ConfirmarAgendamento</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_GerarMinuta</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_AtualizarStatusPJe</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_NotificarFallback</bpmn:flowNodeRef>
+      </bpmn:lane>
+
+      <!-- Lane 3: Administrador da SJ -->
+      <bpmn:lane id="Lane_Admin" name="Administrador da SJ">
+        <bpmn:flowNodeRef>Task_ManterDisponibilidade</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_CadastrarBloqueios</bpmn:flowNodeRef>
+      </bpmn:lane>
+
+    </bpmn:laneSet>
+
+    <!-- ─── EVENTOS ──────────────────────────────────────────────── -->
+
+    <bpmn:startEvent id="Start_ProcessoRecebido"
+      name="Processo recebido com metadado de especialidade">
+      <bpmn:documentation>
+        Processo judicial remessado pelo servidor com o campo "especialidade" preenchido
+        (ex: Ortopedia, Psiquiatria, Neurologia). Dispara o motor de agendamento automático.
+      </bpmn:documentation>
+      <bpmn:outgoing>Flow_S1</bpmn:outgoing>
+    </bpmn:startEvent>
+
+    <bpmn:endEvent id="End_AgendamentoConfirmado"
+      name="Agendamento confirmado e minuta gerada automaticamente">
+      <bpmn:documentation>
+        O sistema confirma o agendamento, reserva a sala (se Sede), gera a minuta de
+        intimação e atualiza o status do processo para "Perícia Agendada" no PJe.
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_Fim_Auto</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <bpmn:endEvent id="End_DesignacaoManual"
+      name="Processo na fila de designação manual">
+      <bpmn:documentation>
+        Fallback: o processo é encaminhado para a tarefa "Perícia — Designar Manualmente"
+        no PJe, onde um servidor designará perito e horário manualmente.
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_Fim_Manual</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <!-- ─── TAREFAS — SERVIDOR DA UNIDADE ───────────────────────── -->
+
+    <bpmn:userTask id="Task_RemeterProcesso"
+      name="Remeter processo para a automação de perícia">
+      <bpmn:documentation>
+        O servidor da unidade jurisdicional seleciona o processo e o remete
+        para a tarefa de automação de perícia no fluxo do PJe.
+        O sistema recebe o metadado de especialidade preenchido na petição inicial.
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_S1</bpmn:incoming>
+      <bpmn:outgoing>Flow_S2</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <bpmn:userTask id="Task_DesignarManualmente"
+      name="Designar perito e horário manualmente">
+      <bpmn:documentation>
+        Servidor escolhe manualmente o perito disponível e o horário de realização
+        da perícia, registrando no PJe. Usado quando o motor não encontra vaga
+        ou quando a unidade está em modo Manual.
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_Para_Manual</bpmn:incoming>
+      <bpmn:outgoing>Flow_Fim_Manual</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <!-- ─── TAREFAS — MOTOR DE AUTOMAÇÃO ────────────────────────── -->
+
+    <bpmn:serviceTask id="Task_IdentificarEspecialidade"
+      name="Identificar especialidade e verificar modo da unidade">
+      <bpmn:documentation>
+        O motor lê o metadado de especialidade do processo e verifica se
+        a unidade jurisdicional de origem está configurada em modo Automático ou Manual.
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_S2</bpmn:incoming>
+      <bpmn:outgoing>Flow_M1</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:exclusiveGateway id="GW_ModoAutomatico"
+      name="Modo da unidade = Automático?" gatewayDirection="Diverging">
+      <bpmn:documentation>
+        RF03: Verifica se a unidade jurisdicional está configurada para operação
+        Automática. Se Manual, encaminha diretamente para designação humana.
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_M1</bpmn:incoming>
+      <bpmn:outgoing>Flow_SimAuto</bpmn:outgoing>
+      <bpmn:outgoing>Flow_NaoAuto</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <bpmn:serviceTask id="Task_BuscarPeritos"
+      name="RF01 — Filtrar peritos pela especialidade e unidade">
+      <bpmn:documentation>
+        RF01, Passo 1: O motor consulta o cadastro de peritos e filtra aqueles que:
+        (a) possuem a especialidade requerida pelo processo, e
+        (b) estão vinculados à unidade jurisdicional de origem.
+        Resultado: lista de candidatos elegíveis.
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_SimAuto</bpmn:incoming>
+      <bpmn:outgoing>Flow_M2</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:exclusiveGateway id="GW_PeritosEncontrados"
+      name="Peritos com a especialidade foram encontrados?" gatewayDirection="Diverging">
+      <bpmn:incoming>Flow_M2</bpmn:incoming>
+      <bpmn:outgoing>Flow_SimPeritos</bpmn:outgoing>
+      <bpmn:outgoing>Flow_NaoPeritos</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <bpmn:serviceTask id="Task_OrdenarCarga"
+      name="RF01 — Ordenar candidatos pelo critério de desempate (menor carga mensal)">
+      <bpmn:documentation>
+        RF01, Passo 3 (Critério de Desempate): Se houver mais de um perito elegível,
+        o motor os ordena pelo número de perícias já marcadas no mês corrente
+        (campo periciasNoMes), do menor para o maior.
+        O perito com MENOR carga é verificado primeiro.
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_SimPeritos</bpmn:incoming>
+      <bpmn:outgoing>Flow_M3</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:serviceTask id="Task_VerificarAgenda"
+      name="RF02 — Identificar próxima data disponível na agenda base do perito">
+      <bpmn:documentation>
+        RF02: Para o perito candidato atual (menor carga), o motor consulta a
+        Agenda_Base (recorrência semanal) e a Agenda_Excecao (datas específicas)
+        para localizar a próxima data/hora com vagas disponíveis.
+        Respeita o número máximo de perícias por turno (vagasTurno).
+        Janela máxima de busca: 42 dias a partir da data atual.
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_M3</bpmn:incoming>
+      <bpmn:incoming>Flow_Loop_ProxData</bpmn:incoming>
+      <bpmn:outgoing>Flow_M4</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:exclusiveGateway id="GW_LocalAtendimento"
+      name="Local de atendimento do perito?" gatewayDirection="Diverging">
+      <bpmn:documentation>
+        RF01, Passo 2: Verifica o atributo "local" do perito.
+        — Consultório: apenas verifica a agenda do perito (sem sala física).
+        — Sede: verifica a agenda do perito E a disponibilidade de sala na localidade.
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_M4</bpmn:incoming>
+      <bpmn:outgoing>Flow_Consultorio</bpmn:outgoing>
+      <bpmn:outgoing>Flow_Sede</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <!-- Caminho Consultório -->
+    <bpmn:serviceTask id="Task_VerificarConsultorio"
+      name="Verificar disponibilidade na agenda do consultório particular">
+      <bpmn:documentation>
+        Local = Consultório: O motor apenas verifica se a data/hora encontrada
+        na agenda base está dentro da janela de disponibilidade do perito.
+        NÃO requer verificação de sala física.
+        Se disponível → vaga confirmada.
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_Consultorio</bpmn:incoming>
+      <bpmn:outgoing>Flow_ConsultorioOk</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <!-- Caminho Sede -->
+    <bpmn:serviceTask id="Task_VerificarTravaSala"
+      name="RF01 — Verificar Trava de Sala: perito já possui sala reservada no turno?">
+      <bpmn:documentation>
+        Regra de Trava (Sede): O motor verifica se o perito já possui alguma
+        perícia agendada naquele mesmo dia e turno (Manhã/Tarde).
+        — SE SIM: o sistema utiliza a MESMA sala já vinculada ao perito naquele turno
+          (evitando conflito e garantindo continuidade).
+        — SE NÃO: o motor busca a primeira sala disponível na localidade.
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_Sede</bpmn:incoming>
+      <bpmn:outgoing>Flow_Para_BuscarSala</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:serviceTask id="Task_BuscarSalaDisponivel"
+      name="Buscar sala disponível na localidade da sede (por turno)">
+      <bpmn:documentation>
+        Para cada sala da localidade vinculada ao perito:
+        1. Verifica se a sala está ocupada por outro perito no mesmo turno.
+        2. Se ocupada → registra no log e tenta próxima sala.
+        3. Se livre → reserva a sala para este agendamento (sequestra de forma atômica).
+        Se não houver sala disponível → busca próxima data.
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_Para_BuscarSala</bpmn:incoming>
+      <bpmn:outgoing>Flow_M5</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:exclusiveGateway id="GW_SalaDisponivel"
+      name="Sala disponível neste turno?" gatewayDirection="Diverging">
+      <bpmn:incoming>Flow_M5</bpmn:incoming>
+      <bpmn:outgoing>Flow_SimSala</bpmn:outgoing>
+      <bpmn:outgoing>Flow_NaoSala</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <!-- Gateway de loop / próxima data -->
+    <bpmn:exclusiveGateway id="GW_ProximaDataPerito"
+      name="Há mais datas ou peritos a verificar? (dentro de 42 dias)" gatewayDirection="Diverging">
+      <bpmn:documentation>
+        RF03, Fallback: Se a data atual não tem sala disponível, o motor verifica se:
+        (a) há outra data na janela de 42 dias para o perito atual, OU
+        (b) há outro perito na lista de candidatos a ser verificado.
+        Se esgotou todas as opções → fallback para designação manual.
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_NaoSala</bpmn:incoming>
+      <bpmn:outgoing>Flow_Loop_ProxData</bpmn:outgoing>
+      <bpmn:outgoing>Flow_Esgotado</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <!-- Merge após consultório e sede -->
+    <bpmn:exclusiveGateway id="GW_MergeVaga"
+      name="Vaga confirmada" gatewayDirection="Converging">
+      <bpmn:incoming>Flow_ConsultorioOk</bpmn:incoming>
+      <bpmn:incoming>Flow_SimSala</bpmn:incoming>
+      <bpmn:outgoing>Flow_M6</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <bpmn:serviceTask id="Task_ConfirmarAgendamento"
+      name="Confirmar agendamento e reservar sala (se Sede)">
+      <bpmn:documentation>
+        O motor grava o agendamento no banco de dados:
+        — Vincula o processo ao perito e à data/hora.
+        — Se Local = Sede: registra a reserva da sala para o turno (trava).
+        — Incrementa o contador periciasNoMes do perito.
+        — Atualiza status do processo para "Perícia Agendada".
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_M6</bpmn:incoming>
+      <bpmn:outgoing>Flow_M7</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:serviceTask id="Task_GerarMinuta"
+      name="Gerar minuta de intimação automaticamente">
+      <bpmn:documentation>
+        O motor gera automaticamente a Minuta de Intimação contendo:
+        — Número do processo
+        — Nome do perito designado e CRM
+        — Especialidade
+        — Data, hora e local da perícia
+        — Endereço da sede ou consultório
+        A minuta fica disponível para assinatura do magistrado no PJe.
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_M7</bpmn:incoming>
+      <bpmn:outgoing>Flow_M8</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:serviceTask id="Task_AtualizarStatusPJe"
+      name="Atualizar status do processo no PJe e notificar partes">
+      <bpmn:documentation>
+        O motor atualiza o processo no PJe:
+        — Status: "Perícia Agendada — Aguardando Realização"
+        — Registra log de automação no histórico do processo
+        — Notifica servidor da unidade sobre o agendamento realizado
+        — Disponibiliza minuta para assinatura
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_M8</bpmn:incoming>
+      <bpmn:outgoing>Flow_Fim_Auto</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:serviceTask id="Task_NotificarFallback"
+      name="RF03 — Encaminhar processo para fila de designação manual">
+      <bpmn:documentation>
+        RF03, Fallback: O motor não encontrou disponibilidade automática.
+        Causas possíveis:
+        — Nenhum perito cadastrado para a especialidade na unidade
+        — Todos os peritos sem agenda cadastrada
+        — Todas as salas ocupadas em todas as datas disponíveis (42 dias)
+        — Unidade configurada em modo Manual
+        Ação: Processo movido para tarefa "Perícia — Designar Manualmente" no PJe.
+        Registra o motivo do fallback no log do processo.
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_NaoAuto</bpmn:incoming>
+      <bpmn:incoming>Flow_NaoPeritos</bpmn:incoming>
+      <bpmn:incoming>Flow_Esgotado</bpmn:incoming>
+      <bpmn:outgoing>Flow_Para_Manual</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <!-- ─── TAREFAS — ADMINISTRADOR DA SJ ───────────────────────── -->
+
+    <bpmn:userTask id="Task_ManterDisponibilidade"
+      name="RF02 — Cadastrar/atualizar disponibilidade dos peritos">
+      <bpmn:documentation>
+        RF02: O Administrador da SJ mantém a agenda dos peritos:
+        — Agenda_Base: recorrência semanal (dia, hora início, hora fim, intervalo, vagas/turno)
+        — Agenda_Excecao: datas específicas de disponibilidade ou indisponibilidade
+        Esta tarefa alimenta a base de dados usada pelo motor de busca.
+      </bpmn:documentation>
+    </bpmn:userTask>
+
+    <bpmn:userTask id="Task_CadastrarBloqueios"
+      name="Cadastrar bloqueios de localidade (feriados / suspensão de atividades)">
+      <bpmn:documentation>
+        O Administrador cadastra datas em que determinada localidade (sede) não
+        estará disponível para realização de perícias (feriados municipais, eventos,
+        reformas, suspensão judicial etc.).
+        O motor ignora estas datas ao buscar vagas para peritos de Sede.
+      </bpmn:documentation>
+    </bpmn:userTask>
+
+    <!-- ═══════════════════════════════════════════════════════════
+         SEQUENCE FLOWS
+    ═══════════════════════════════════════════════════════════ -->
+
+    <!-- Start → Servidor -->
+    <bpmn:sequenceFlow id="Flow_S1" sourceRef="Start_ProcessoRecebido" targetRef="Task_RemeterProcesso"/>
+    <bpmn:sequenceFlow id="Flow_S2" sourceRef="Task_RemeterProcesso" targetRef="Task_IdentificarEspecialidade"/>
+
+    <!-- Motor: início -->
+    <bpmn:sequenceFlow id="Flow_M1" sourceRef="Task_IdentificarEspecialidade" targetRef="GW_ModoAutomatico"/>
+    <bpmn:sequenceFlow id="Flow_SimAuto" name="Sim — modo automático" sourceRef="GW_ModoAutomatico" targetRef="Task_BuscarPeritos"/>
+    <bpmn:sequenceFlow id="Flow_NaoAuto" name="Não — modo manual" sourceRef="GW_ModoAutomatico" targetRef="Task_NotificarFallback"/>
+
+    <!-- Motor: busca de peritos -->
+    <bpmn:sequenceFlow id="Flow_M2" sourceRef="Task_BuscarPeritos" targetRef="GW_PeritosEncontrados"/>
+    <bpmn:sequenceFlow id="Flow_SimPeritos" name="Sim" sourceRef="GW_PeritosEncontrados" targetRef="Task_OrdenarCarga"/>
+    <bpmn:sequenceFlow id="Flow_NaoPeritos" name="Não — especialidade sem cobertura" sourceRef="GW_PeritosEncontrados" targetRef="Task_NotificarFallback"/>
+
+    <!-- Motor: agenda e local -->
+    <bpmn:sequenceFlow id="Flow_M3" sourceRef="Task_OrdenarCarga" targetRef="Task_VerificarAgenda"/>
+    <bpmn:sequenceFlow id="Flow_Loop_ProxData" name="Sim — próxima data / próximo perito" sourceRef="GW_ProximaDataPerito" targetRef="Task_VerificarAgenda"/>
+    <bpmn:sequenceFlow id="Flow_M4" sourceRef="Task_VerificarAgenda" targetRef="GW_LocalAtendimento"/>
+
+    <!-- Caminho Consultório -->
+    <bpmn:sequenceFlow id="Flow_Consultorio" name="Consultório" sourceRef="GW_LocalAtendimento" targetRef="Task_VerificarConsultorio"/>
+    <bpmn:sequenceFlow id="Flow_ConsultorioOk" sourceRef="Task_VerificarConsultorio" targetRef="GW_MergeVaga"/>
+
+    <!-- Caminho Sede -->
+    <bpmn:sequenceFlow id="Flow_Sede" name="Sede" sourceRef="GW_LocalAtendimento" targetRef="Task_VerificarTravaSala"/>
+    <bpmn:sequenceFlow id="Flow_Para_BuscarSala" sourceRef="Task_VerificarTravaSala" targetRef="Task_BuscarSalaDisponivel"/>
+    <bpmn:sequenceFlow id="Flow_M5" sourceRef="Task_BuscarSalaDisponivel" targetRef="GW_SalaDisponivel"/>
+    <bpmn:sequenceFlow id="Flow_SimSala" name="Sim — sala disponível" sourceRef="GW_SalaDisponivel" targetRef="GW_MergeVaga"/>
+    <bpmn:sequenceFlow id="Flow_NaoSala" name="Não — sala ocupada" sourceRef="GW_SalaDisponivel" targetRef="GW_ProximaDataPerito"/>
+
+    <!-- Loop / esgotamento -->
+    <bpmn:sequenceFlow id="Flow_Esgotado" name="Não — 42 dias esgotados" sourceRef="GW_ProximaDataPerito" targetRef="Task_NotificarFallback"/>
+
+    <!-- Confirmação e fim automático -->
+    <bpmn:sequenceFlow id="Flow_M6" sourceRef="GW_MergeVaga" targetRef="Task_ConfirmarAgendamento"/>
+    <bpmn:sequenceFlow id="Flow_M7" sourceRef="Task_ConfirmarAgendamento" targetRef="Task_GerarMinuta"/>
+    <bpmn:sequenceFlow id="Flow_M8" sourceRef="Task_GerarMinuta" targetRef="Task_AtualizarStatusPJe"/>
+    <bpmn:sequenceFlow id="Flow_Fim_Auto" sourceRef="Task_AtualizarStatusPJe" targetRef="End_AgendamentoConfirmado"/>
+
+    <!-- Fallback → manual -->
+    <bpmn:sequenceFlow id="Flow_Para_Manual" sourceRef="Task_NotificarFallback" targetRef="Task_DesignarManualmente"/>
+    <bpmn:sequenceFlow id="Flow_Fim_Manual" sourceRef="Task_DesignarManualmente" targetRef="End_DesignacaoManual"/>
+
+  </bpmn:process>
+
+  <!-- ═══════════════════════════════════════════════════════════════
+       DIAGRAM (BPMNDi) — Layout horizontal, 3 lanes
+  ═══════════════════════════════════════════════════════════════ -->
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Collab_PJeMAP">
+
+      <!-- Pool -->
+      <bpmndi:BPMNShape id="Shape_Pool" bpmnElement="Pool_PJeMAP" isHorizontal="true">
+        <dc:Bounds x="0" y="0" width="2480" height="720"/>
+      </bpmndi:BPMNShape>
+
+      <!-- Lane: Servidor da Unidade (y 0-180) -->
+      <bpmndi:BPMNShape id="Shape_Lane_Servidor" bpmnElement="Lane_Servidor" isHorizontal="true">
+        <dc:Bounds x="30" y="0" width="2450" height="180"/>
+      </bpmndi:BPMNShape>
+
+      <!-- Lane: Motor (y 180-530) -->
+      <bpmndi:BPMNShape id="Shape_Lane_Motor" bpmnElement="Lane_Motor" isHorizontal="true">
+        <dc:Bounds x="30" y="180" width="2450" height="380"/>
+      </bpmndi:BPMNShape>
+
+      <!-- Lane: Administrador da SJ (y 560-720) -->
+      <bpmndi:BPMNShape id="Shape_Lane_Admin" bpmnElement="Lane_Admin" isHorizontal="true">
+        <dc:Bounds x="30" y="560" width="2450" height="160"/>
+      </bpmndi:BPMNShape>
+
+      <!-- ── Servidor lane elements ── -->
+
+      <!-- Start Event -->
+      <bpmndi:BPMNShape id="Shape_Start" bpmnElement="Start_ProcessoRecebido">
+        <dc:Bounds x="72" y="72" width="36" height="36"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="50" y="115" width="80" height="40"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <!-- Task: Remeter Processo -->
+      <bpmndi:BPMNShape id="Shape_RemeterProcesso" bpmnElement="Task_RemeterProcesso">
+        <dc:Bounds x="160" y="60" width="140" height="60"/>
+      </bpmndi:BPMNShape>
+
+      <!-- Task: Designar Manualmente -->
+      <bpmndi:BPMNShape id="Shape_DesignarManualmente" bpmnElement="Task_DesignarManualmente">
+        <dc:Bounds x="2140" y="60" width="140" height="60"/>
+      </bpmndi:BPMNShape>
+
+      <!-- End: Manual -->
+      <bpmndi:BPMNShape id="Shape_EndManual" bpmnElement="End_DesignacaoManual">
+        <dc:Bounds x="2340" y="72" width="36" height="36"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="2316" y="115" width="90" height="40"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <!-- End: Agendamento Confirmado -->
+      <bpmndi:BPMNShape id="Shape_EndAuto" bpmnElement="End_AgendamentoConfirmado">
+        <dc:Bounds x="2432" y="72" width="36" height="36"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="2408" y="115" width="90" height="40"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <!-- ── Motor lane elements ── -->
+
+      <!-- Task: Identificar Especialidade -->
+      <bpmndi:BPMNShape id="Shape_IdentificarEsp" bpmnElement="Task_IdentificarEspecialidade">
+        <dc:Bounds x="160" y="250" width="140" height="60"/>
+      </bpmndi:BPMNShape>
+
+      <!-- GW: Modo Automático -->
+      <bpmndi:BPMNShape id="Shape_GW_Modo" bpmnElement="GW_ModoAutomatico" isMarkerVisible="true">
+        <dc:Bounds x="355" y="265" width="50" height="50"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="325" y="322" width="110" height="30"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <!-- Task: Buscar Peritos -->
+      <bpmndi:BPMNShape id="Shape_BuscarPeritos" bpmnElement="Task_BuscarPeritos">
+        <dc:Bounds x="460" y="250" width="140" height="60"/>
+      </bpmndi:BPMNShape>
+
+      <!-- GW: Peritos Encontrados -->
+      <bpmndi:BPMNShape id="Shape_GW_Peritos" bpmnElement="GW_PeritosEncontrados" isMarkerVisible="true">
+        <dc:Bounds x="655" y="265" width="50" height="50"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="622" y="322" width="116" height="30"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <!-- Task: Ordenar Carga -->
+      <bpmndi:BPMNShape id="Shape_OrdenarCarga" bpmnElement="Task_OrdenarCarga">
+        <dc:Bounds x="760" y="250" width="140" height="60"/>
+      </bpmndi:BPMNShape>
+
+      <!-- Task: Verificar Agenda -->
+      <bpmndi:BPMNShape id="Shape_VerificarAgenda" bpmnElement="Task_VerificarAgenda">
+        <dc:Bounds x="960" y="250" width="140" height="60"/>
+      </bpmndi:BPMNShape>
+
+      <!-- GW: Local Atendimento -->
+      <bpmndi:BPMNShape id="Shape_GW_Local" bpmnElement="GW_LocalAtendimento" isMarkerVisible="true">
+        <dc:Bounds x="1155" y="265" width="50" height="50"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="1120" y="322" width="120" height="30"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <!-- Task: Verificar Consultório (upper path) -->
+      <bpmndi:BPMNShape id="Shape_VerifConsultorio" bpmnElement="Task_VerificarConsultorio">
+        <dc:Bounds x="1260" y="210" width="140" height="60"/>
+      </bpmndi:BPMNShape>
+
+      <!-- Task: Verificar Trava Sala (lower path) -->
+      <bpmndi:BPMNShape id="Shape_VerifTrava" bpmnElement="Task_VerificarTravaSala">
+        <dc:Bounds x="1260" y="330" width="140" height="60"/>
+      </bpmndi:BPMNShape>
+
+      <!-- Task: Buscar Sala -->
+      <bpmndi:BPMNShape id="Shape_BuscarSala" bpmnElement="Task_BuscarSalaDisponivel">
+        <dc:Bounds x="1460" y="330" width="140" height="60"/>
+      </bpmndi:BPMNShape>
+
+      <!-- GW: Sala Disponível -->
+      <bpmndi:BPMNShape id="Shape_GW_Sala" bpmnElement="GW_SalaDisponivel" isMarkerVisible="true">
+        <dc:Bounds x="1655" y="345" width="50" height="50"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="1622" y="402" width="116" height="30"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <!-- GW: Próxima Data / Perito (loop) -->
+      <bpmndi:BPMNShape id="Shape_GW_ProxData" bpmnElement="GW_ProximaDataPerito" isMarkerVisible="true">
+        <dc:Bounds x="1655" y="450" width="50" height="50"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="1615" y="507" width="130" height="40"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <!-- GW: Merge Vaga -->
+      <bpmndi:BPMNShape id="Shape_GW_Merge" bpmnElement="GW_MergeVaga" isMarkerVisible="true">
+        <dc:Bounds x="1755" y="265" width="50" height="50"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="1725" y="322" width="110" height="20"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <!-- Task: Confirmar Agendamento -->
+      <bpmndi:BPMNShape id="Shape_Confirmar" bpmnElement="Task_ConfirmarAgendamento">
+        <dc:Bounds x="1860" y="250" width="140" height="60"/>
+      </bpmndi:BPMNShape>
+
+      <!-- Task: Gerar Minuta -->
+      <bpmndi:BPMNShape id="Shape_GerarMinuta" bpmnElement="Task_GerarMinuta">
+        <dc:Bounds x="2060" y="250" width="140" height="60"/>
+      </bpmndi:BPMNShape>
+
+      <!-- Task: Atualizar Status -->
+      <bpmndi:BPMNShape id="Shape_AtualizarStatus" bpmnElement="Task_AtualizarStatusPJe">
+        <dc:Bounds x="2260" y="250" width="140" height="60"/>
+      </bpmndi:BPMNShape>
+
+      <!-- Task: Notificar Fallback -->
+      <bpmndi:BPMNShape id="Shape_Fallback" bpmnElement="Task_NotificarFallback">
+        <dc:Bounds x="1960" y="400" width="140" height="60"/>
+      </bpmndi:BPMNShape>
+
+      <!-- ── Admin lane elements ── -->
+
+      <bpmndi:BPMNShape id="Shape_ManterDisp" bpmnElement="Task_ManterDisponibilidade">
+        <dc:Bounds x="460" y="610" width="140" height="60"/>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Shape_CadBloqueios" bpmnElement="Task_CadastrarBloqueios">
+        <dc:Bounds x="760" y="610" width="140" height="60"/>
+      </bpmndi:BPMNShape>
+
+      <!-- ═══════════════════════════════════════════════════════
+           SEQUENCE FLOW EDGES
+      ═══════════════════════════════════════════════════════ -->
+
+      <!-- Start → RemeterProcesso -->
+      <bpmndi:BPMNEdge id="Edge_S1" bpmnElement="Flow_S1">
+        <di:waypoint x="108" y="90"/>
+        <di:waypoint x="160" y="90"/>
+      </bpmndi:BPMNEdge>
+
+      <!-- RemeterProcesso → IdentificarEspecialidade (cross-lane) -->
+      <bpmndi:BPMNEdge id="Edge_S2" bpmnElement="Flow_S2">
+        <di:waypoint x="230" y="120"/>
+        <di:waypoint x="230" y="280"/>
+      </bpmndi:BPMNEdge>
+
+      <!-- IdentificarEspecialidade → GW_Modo -->
+      <bpmndi:BPMNEdge id="Edge_M1" bpmnElement="Flow_M1">
+        <di:waypoint x="300" y="280"/>
+        <di:waypoint x="355" y="290"/>
+      </bpmndi:BPMNEdge>
+
+      <!-- GW_Modo → BuscarPeritos (Sim) -->
+      <bpmndi:BPMNEdge id="Edge_SimAuto" bpmnElement="Flow_SimAuto">
+        <di:waypoint x="405" y="290"/>
+        <di:waypoint x="460" y="280"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="415" y="270" width="40" height="14"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+
+      <!-- GW_Modo → Fallback (Não) -->
+      <bpmndi:BPMNEdge id="Edge_NaoAuto" bpmnElement="Flow_NaoAuto">
+        <di:waypoint x="380" y="315"/>
+        <di:waypoint x="380" y="430"/>
+        <di:waypoint x="1960" y="430"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="385" y="360" width="50" height="14"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+
+      <!-- BuscarPeritos → GW_Peritos -->
+      <bpmndi:BPMNEdge id="Edge_M2" bpmnElement="Flow_M2">
+        <di:waypoint x="600" y="280"/>
+        <di:waypoint x="655" y="290"/>
+      </bpmndi:BPMNEdge>
+
+      <!-- GW_Peritos → OrdenarCarga (Sim) -->
+      <bpmndi:BPMNEdge id="Edge_SimPeritos" bpmnElement="Flow_SimPeritos">
+        <di:waypoint x="705" y="290"/>
+        <di:waypoint x="760" y="280"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="718" y="270" width="25" height="14"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+
+      <!-- GW_Peritos → Fallback (Não) -->
+      <bpmndi:BPMNEdge id="Edge_NaoPeritos" bpmnElement="Flow_NaoPeritos">
+        <di:waypoint x="680" y="315"/>
+        <di:waypoint x="680" y="480"/>
+        <di:waypoint x="1960" y="430"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="685" y="390" width="60" height="14"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+
+      <!-- OrdenarCarga → VerificarAgenda -->
+      <bpmndi:BPMNEdge id="Edge_M3" bpmnElement="Flow_M3">
+        <di:waypoint x="900" y="280"/>
+        <di:waypoint x="960" y="280"/>
+      </bpmndi:BPMNEdge>
+
+      <!-- VerificarAgenda → GW_Local -->
+      <bpmndi:BPMNEdge id="Edge_M4" bpmnElement="Flow_M4">
+        <di:waypoint x="1100" y="280"/>
+        <di:waypoint x="1155" y="290"/>
+      </bpmndi:BPMNEdge>
+
+      <!-- GW_Local → VerificarConsultorio -->
+      <bpmndi:BPMNEdge id="Edge_Consultorio" bpmnElement="Flow_Consultorio">
+        <di:waypoint x="1180" y="265"/>
+        <di:waypoint x="1180" y="240"/>
+        <di:waypoint x="1260" y="240"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="1190" y="245" width="65" height="14"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+
+      <!-- GW_Local → VerificarTravaSala -->
+      <bpmndi:BPMNEdge id="Edge_Sede" bpmnElement="Flow_Sede">
+        <di:waypoint x="1180" y="315"/>
+        <di:waypoint x="1180" y="360"/>
+        <di:waypoint x="1260" y="360"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="1190" y="335" width="35" height="14"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+
+      <!-- VerificarConsultorio → GW_Merge -->
+      <bpmndi:BPMNEdge id="Edge_ConsultorioOk" bpmnElement="Flow_ConsultorioOk">
+        <di:waypoint x="1400" y="240"/>
+        <di:waypoint x="1780" y="240"/>
+        <di:waypoint x="1780" y="265"/>
+      </bpmndi:BPMNEdge>
+
+      <!-- VerificarTravaSala → BuscarSala -->
+      <bpmndi:BPMNEdge id="Edge_Para_BuscarSala" bpmnElement="Flow_Para_BuscarSala">
+        <di:waypoint x="1400" y="360"/>
+        <di:waypoint x="1460" y="360"/>
+      </bpmndi:BPMNEdge>
+
+      <!-- BuscarSala → GW_Sala -->
+      <bpmndi:BPMNEdge id="Edge_M5" bpmnElement="Flow_M5">
+        <di:waypoint x="1600" y="360"/>
+        <di:waypoint x="1655" y="370"/>
+      </bpmndi:BPMNEdge>
+
+      <!-- GW_Sala → GW_Merge (Sim) -->
+      <bpmndi:BPMNEdge id="Edge_SimSala" bpmnElement="Flow_SimSala">
+        <di:waypoint x="1705" y="370"/>
+        <di:waypoint x="1780" y="370"/>
+        <di:waypoint x="1780" y="315"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="1720" y="350" width="25" height="14"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+
+      <!-- GW_Sala → GW_ProxData (Não) -->
+      <bpmndi:BPMNEdge id="Edge_NaoSala" bpmnElement="Flow_NaoSala">
+        <di:waypoint x="1680" y="395"/>
+        <di:waypoint x="1680" y="450"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="1685" y="415" width="40" height="14"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+
+      <!-- GW_ProxData → VerificarAgenda (loop back, Sim) -->
+      <bpmndi:BPMNEdge id="Edge_Loop" bpmnElement="Flow_Loop_ProxData">
+        <di:waypoint x="1680" y="450"/>
+        <di:waypoint x="1680" y="540"/>
+        <di:waypoint x="1030" y="540"/>
+        <di:waypoint x="1030" y="310"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="1300" y="545" width="100" height="28"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+
+      <!-- GW_ProxData → Fallback (esgotado) -->
+      <bpmndi:BPMNEdge id="Edge_Esgotado" bpmnElement="Flow_Esgotado">
+        <di:waypoint x="1705" y="475"/>
+        <di:waypoint x="1960" y="430"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="1800" y="445" width="120" height="28"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+
+      <!-- GW_Merge → ConfirmarAgendamento -->
+      <bpmndi:BPMNEdge id="Edge_M6" bpmnElement="Flow_M6">
+        <di:waypoint x="1805" y="290"/>
+        <di:waypoint x="1860" y="280"/>
+      </bpmndi:BPMNEdge>
+
+      <!-- ConfirmarAgendamento → GerarMinuta -->
+      <bpmndi:BPMNEdge id="Edge_M7" bpmnElement="Flow_M7">
+        <di:waypoint x="2000" y="280"/>
+        <di:waypoint x="2060" y="280"/>
+      </bpmndi:BPMNEdge>
+
+      <!-- GerarMinuta → AtualizarStatus -->
+      <bpmndi:BPMNEdge id="Edge_M8" bpmnElement="Flow_M8">
+        <di:waypoint x="2200" y="280"/>
+        <di:waypoint x="2260" y="280"/>
+      </bpmndi:BPMNEdge>
+
+      <!-- AtualizarStatus → EndAuto (cross-lane) -->
+      <bpmndi:BPMNEdge id="Edge_FimAuto" bpmnElement="Flow_Fim_Auto">
+        <di:waypoint x="2400" y="280"/>
+        <di:waypoint x="2450" y="280"/>
+        <di:waypoint x="2450" y="90"/>
+      </bpmndi:BPMNEdge>
+
+      <!-- Fallback → DesignarManualmente (cross-lane) -->
+      <bpmndi:BPMNEdge id="Edge_Para_Manual" bpmnElement="Flow_Para_Manual">
+        <di:waypoint x="2030" y="400"/>
+        <di:waypoint x="2030" y="380"/>
+        <di:waypoint x="2210" y="380"/>
+        <di:waypoint x="2210" y="90"/>
+      </bpmndi:BPMNEdge>
+
+      <!-- DesignarManualmente → EndManual -->
+      <bpmndi:BPMNEdge id="Edge_FimManual" bpmnElement="Flow_Fim_Manual">
+        <di:waypoint x="2280" y="90"/>
+        <di:waypoint x="2340" y="90"/>
+      </bpmndi:BPMNEdge>
+
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>
